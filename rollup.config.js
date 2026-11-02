@@ -113,7 +113,7 @@ function generateConfig(configType, format) {
             '@exodus/crypto/curve25519',
             '@exodus/crypto/randomBytes',
             '@exodus/bigint-buffer',
-            '@exodus/solana-buffer-layout',
+            '@solana/buffer-layout',
             'readable-stream',
             'bn.js',
             'borsh',
