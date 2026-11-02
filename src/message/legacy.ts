@@ -19,6 +19,7 @@ import {
 import {TransactionInstruction} from '../transaction/index.js';
 import {CompiledKeys} from './compiled-keys.js';
 import {MessageAccountKeys} from './account-keys.js';
+import {guardedShift, guardedSplice} from '../utils/guarded-array-utils.js';
 
 /**
  * An instruction to execute by a program
@@ -271,7 +272,7 @@ export class Message {
     // Slice up wire data
     let byteArray = [...buffer];
 
-    const numRequiredSignatures = byteArray.shift() as number;
+    const numRequiredSignatures = guardedShift(byteArray);
     if (
       numRequiredSignatures !==
       (numRequiredSignatures & VERSION_PREFIX_MASK)
@@ -281,31 +282,27 @@ export class Message {
       );
     }
 
-    const numReadonlySignedAccounts = byteArray.shift() as number;
-    const numReadonlyUnsignedAccounts = byteArray.shift() as number;
+    const numReadonlySignedAccounts = guardedShift(byteArray);
+    const numReadonlyUnsignedAccounts = guardedShift(byteArray);
 
     const accountCount = shortvec.decodeLength(byteArray);
     let accountKeys = [];
     for (let i = 0; i < accountCount; i++) {
-      const account = byteArray.slice(0, PUBLIC_KEY_LENGTH);
-      byteArray = byteArray.slice(PUBLIC_KEY_LENGTH);
+      const account = guardedSplice(byteArray, 0, PUBLIC_KEY_LENGTH);
       accountKeys.push(new PublicKey(Buffer.from(account)));
     }
 
-    const recentBlockhash = byteArray.slice(0, PUBLIC_KEY_LENGTH);
-    byteArray = byteArray.slice(PUBLIC_KEY_LENGTH);
+    const recentBlockhash = guardedSplice(byteArray, 0, PUBLIC_KEY_LENGTH);
 
     const instructionCount = shortvec.decodeLength(byteArray);
     let instructions: CompiledInstruction[] = [];
     for (let i = 0; i < instructionCount; i++) {
-      const programIdIndex = byteArray.shift() as number;
+      const programIdIndex = guardedShift(byteArray);
       const accountCount = shortvec.decodeLength(byteArray);
-      const accounts = byteArray.slice(0, accountCount);
-      byteArray = byteArray.slice(accountCount);
+      const accounts = guardedSplice(byteArray, 0, accountCount);
       const dataLength = shortvec.decodeLength(byteArray);
-      const dataSlice = byteArray.slice(0, dataLength);
+      const dataSlice = guardedSplice(byteArray, 0, dataLength);
       const data = bs58.encode(Buffer.from(dataSlice));
-      byteArray = byteArray.slice(dataLength);
       instructions.push({
         programIdIndex,
         accounts,

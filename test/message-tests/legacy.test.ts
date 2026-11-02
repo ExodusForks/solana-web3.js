@@ -89,6 +89,13 @@ describe('Message', () => {
     expect(message.recentBlockhash).to.eq(recentBlockhash);
   });
 
+  it('from fails when the buffer ends early', () => {
+    const truncatedBuffer = new Uint8Array([1, 0, 0, 2, ...new Uint8Array(32)]);
+    expect(() => {
+      Message.from(truncatedBuffer);
+    }).to.throw('Reached end of buffer unexpectedly');
+  });
+
   it('isAccountWritable', () => {
     const accountKeys = [
       PublicKey.unique(),
