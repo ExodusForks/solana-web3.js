@@ -297,6 +297,18 @@ describe('MessageV0', () => {
     }).to.throw(
       'Expected versioned message with version 0 but found version 1',
     );
+
+    const truncatedBuffer = new Uint8Array([
+      1 << 7,
+      1,
+      0,
+      0,
+      2,
+      ...new Uint8Array(32),
+    ]);
+    expect(() => {
+      MessageV0.deserialize(truncatedBuffer);
+    }).to.throw('Reached end of buffer unexpectedly');
   });
 
   it('isAccountWritable', () => {

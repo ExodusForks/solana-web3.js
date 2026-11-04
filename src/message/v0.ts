@@ -19,6 +19,7 @@ import {TransactionInstruction} from '../transaction/index.js';
 import {AddressLookupTableAccount} from '../programs/index.js';
 import {CompiledKeys} from './compiled-keys.js';
 import {AccountKeysFromLookups, MessageAccountKeys} from './account-keys.js';
+import {guardedShift, guardedSplice} from '../utils/guarded-array-utils.js';
 
 /**
  * Message constructor arguments
@@ -429,7 +430,7 @@ export class MessageV0 {
   static deserialize(serializedMessage: Uint8Array): MessageV0 {
     let byteArray = [...serializedMessage];
 
-    const prefix = byteArray.shift() as number;
+    const prefix = guardedShift(byteArray);
     const maskedPrefix = prefix & VERSION_PREFIX_MASK;
     assert(
       prefix !== maskedPrefix,
@@ -443,29 +444,35 @@ export class MessageV0 {
     );
 
     const header: MessageHeader = {
-      numRequiredSignatures: byteArray.shift() as number,
-      numReadonlySignedAccounts: byteArray.shift() as number,
-      numReadonlyUnsignedAccounts: byteArray.shift() as number,
+      numRequiredSignatures: guardedShift(byteArray),
+      numReadonlySignedAccounts: guardedShift(byteArray),
+      numReadonlyUnsignedAccounts: guardedShift(byteArray),
     };
 
     const staticAccountKeys = [];
     const staticAccountKeysLength = shortvec.decodeLength(byteArray);
     for (let i = 0; i < staticAccountKeysLength; i++) {
       staticAccountKeys.push(
-        new PublicKey(byteArray.splice(0, PUBLIC_KEY_LENGTH)),
+        new PublicKey(guardedSplice(byteArray, 0, PUBLIC_KEY_LENGTH)),
       );
     }
 
-    const recentBlockhash = bs58.encode(byteArray.splice(0, PUBLIC_KEY_LENGTH));
+    const recentBlockhash = bs58.encode(
+      guardedSplice(byteArray, 0, PUBLIC_KEY_LENGTH),
+    );
 
     const instructionCount = shortvec.decodeLength(byteArray);
     const compiledInstructions: MessageCompiledInstruction[] = [];
     for (let i = 0; i < instructionCount; i++) {
-      const programIdIndex = byteArray.shift() as number;
+      const programIdIndex = guardedShift(byteArray);
       const accountKeyIndexesLength = shortvec.decodeLength(byteArray);
-      const accountKeyIndexes = byteArray.splice(0, accountKeyIndexesLength);
+      const accountKeyIndexes = guardedSplice(
+        byteArray,
+        0,
+        accountKeyIndexesLength,
+      );
       const dataLength = shortvec.decodeLength(byteArray);
-      const data = new Uint8Array(byteArray.splice(0, dataLength));
+      const data = new Uint8Array(guardedSplice(byteArray, 0, dataLength));
       compiledInstructions.push({
         programIdIndex,
         accountKeyIndexes,
@@ -476,11 +483,21 @@ export class MessageV0 {
     const addressTableLookupsCount = shortvec.decodeLength(byteArray);
     const addressTableLookups: MessageAddressTableLookup[] = [];
     for (let i = 0; i < addressTableLookupsCount; i++) {
-      const accountKey = new PublicKey(byteArray.splice(0, PUBLIC_KEY_LENGTH));
+      const accountKey = new PublicKey(
+        guardedSplice(byteArray, 0, PUBLIC_KEY_LENGTH),
+      );
       const writableIndexesLength = shortvec.decodeLength(byteArray);
-      const writableIndexes = byteArray.splice(0, writableIndexesLength);
+      const writableIndexes = guardedSplice(
+        byteArray,
+        0,
+        writableIndexesLength,
+      );
       const readonlyIndexesLength = shortvec.decodeLength(byteArray);
-      const readonlyIndexes = byteArray.splice(0, readonlyIndexesLength);
+      const readonlyIndexes = guardedSplice(
+        byteArray,
+        0,
+        readonlyIndexesLength,
+      );
       addressTableLookups.push({
         accountKey,
         writableIndexes,
